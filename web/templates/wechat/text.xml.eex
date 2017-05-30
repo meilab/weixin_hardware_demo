@@ -1,0 +1,7 @@
+<xml>
+  <MsgType><![CDATA[text]]></MsgType>
+  <Content><![CDATA[<%= @reply.content %>]]></Content>
+  <ToUserName><![CDATA[<%= @reply.to %>]]></ToUserName>
+  <FromUserName><![CDATA[<%= @reply.from %>]]></FromUserName>
+  <CreateTime><%= DateTime.to_unix(DateTime.utc_now) %></CreateTime>
+</xml>

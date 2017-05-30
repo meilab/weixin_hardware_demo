@@ -17,7 +17,7 @@ defmodule Demo.Mixfile do
   # Type `mix help compile.app` for more information.
   def application do
     [mod: {Demo, []},
-     applications: [:phoenix, :phoenix_pubsub, :phoenix_html, :cowboy, :logger, :gettext]]
+     applications: [:phoenix, :phoenix_pubsub, :phoenix_html, :cowboy, :logger, :gettext, :wechat]]
   end
 
   # Specifies which paths to compile per environment.
@@ -33,6 +33,8 @@ defmodule Demo.Mixfile do
      {:phoenix_html, "~> 2.6"},
      {:phoenix_live_reload, "~> 1.0", only: :dev},
      {:gettext, "~> 0.11"},
-     {:cowboy, "~> 1.0"}]
+     {:cowboy, "~> 1.0"},
+     {:gen_mqtt, "~> 0.3.1"},
+     {:wechat, "~> 0.1.0"}]
   end
 end

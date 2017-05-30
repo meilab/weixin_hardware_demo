@@ -28,7 +28,7 @@ splash =
             [ h1 [ class "splash-head" ] [ text "meilab" ]
             , p [ class "splash-subhead" ] [ text "前沿技术培训 项目咨询" ]
             , p []
-                [ linkItem "/projectlist" "Get Started" "pure-button pure-button-primary" ]
+                [ linkItem "/chat" "Get Started" "pure-button pure-button-primary" ]
             ]
         ]
 
@@ -54,7 +54,7 @@ contact =
 projects : Html Msg
 projects =
     div [ class "content" ]
-        [ contentHead "项目"
+        [ contentHead "相关项目"
         , projectsDetail
         ]
 
@@ -92,18 +92,18 @@ projectsDetail =
         , div [ class "l-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-4" ]
             [ h3 [ class "content-subhead" ]
                 [ i [ class "fa fa-rocket" ] []
-                , text "区块链平台"
+                , text "微信公众平台"
                 ]
-            , p [] [ text "分布式账簿" ]
-            , p [] [ text "技术栈：Elixir, Blockchain, Elm" ]
+            , p [] [ text "通过微信公众号管理物联网终端" ]
+            , p [] [ text "技术栈：Elixir, C, Weixin, Elm" ]
             ]
         , div [ class "l-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-4" ]
             [ h3 [ class "content-subhead" ]
                 [ i [ class "fa fa-th-large" ] []
-                , text "会议系统，协作平台"
+                , text "微信小程序"
                 ]
-            , p [] [ text "多人视频会议，桌面共享" ]
-            , p [] [ text "技术栈：Elixir, WebRTC, Elm, Socket" ]
+            , p [] [ text "通过微信小程序管理物联网终端" ]
+            , p [] [ text "技术栈：Elixir, C, JavaScript, Socket" ]
             ]
         , div [ class "l-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-4" ]
             [ h3 [ class "content-subhead" ]

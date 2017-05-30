@@ -3,6 +3,8 @@ module Messages exposing (..)
 import Navigation exposing (Location)
 import Types exposing (..)
 import Http
+import Phoenix.Socket
+import Json.Encode as JE
 
 
 type Msg
@@ -15,7 +17,16 @@ type Msg
     | Username String
     | Password String
     | ToggleSideMenu
-    | DeliverMessage
+      -- | DeliverMessage
     | MessageInput String
-    | OnDeliverMessageResponse (Result Http.Error String)
+      -- | OnDeliverMessageResponse (Result Http.Error String)
+    | SendMessage
+    | PhoenixMsg (Phoenix.Socket.Msg Msg)
+    | ReceiveChatMessage JE.Value
+    | JoinChannel String
+    | LeaveChannel String
+    | ShowJoinedMessage String
+    | ShowLeftMessage String
+    | HandlePresenceState JE.Value
+    | HandlePresenceDiff JE.Value
     | NoOp

@@ -46,6 +46,8 @@ init location =
 
         url =
             { origin = location.origin
+            , hostname = location.hostname
+            , port_ = location.port_
             , src_url = src_url
             , api_url = location.origin ++ "/api/v1/iot"
             }

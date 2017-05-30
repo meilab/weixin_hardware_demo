@@ -5,6 +5,7 @@ import Html.Attributes exposing (class, type_, value)
 import Html.Events exposing (onSubmit, onInput)
 import Messages exposing (Msg(..))
 import Models exposing (Model)
+import Types exposing (ReceivedChatMessage)
 
 
 chatView : Model -> Html Msg
@@ -18,11 +19,11 @@ chatView model =
 
 newMessageForm : Model -> Html Msg
 newMessageForm model =
-    form [ onSubmit DeliverMessage ]
+    form [ onSubmit SendMessage ]
         [ input [ type_ "text", value model.newMessage, onInput MessageInput ] []
         ]
 
 
-renderMessage : String -> Html Msg
+renderMessage : ReceivedChatMessage -> Html Msg
 renderMessage message =
-    li [] [ text message ]
+    li [] [ text message.body ]

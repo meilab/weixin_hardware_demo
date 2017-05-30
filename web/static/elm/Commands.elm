@@ -1,4 +1,4 @@
-module Commands exposing (authRequest, deliverMessageCmd)
+module Commands exposing (authRequest)
 
 import Http exposing (..)
 import Json.Decode as JD
@@ -24,18 +24,19 @@ authRequest token api_url username password =
         |> Http.send OnAuthCmdResponse
 
 
-deliverMessageCmd : Maybe String -> String -> String -> Cmd Msg
-deliverMessageCmd token api_url chat_str =
-    Http.request
-        { method = "POST"
-        , headers = [ (tokenHeader token) ]
-        , url = deliverMessageCmdUrl api_url
-        , body = (deliverMessageCmdBody token chat_str)
-        , expect = deliverMessageCmdExpect
-        , timeout = Nothing
-        , withCredentials = False
-        }
-        |> Http.send OnDeliverMessageResponse
+
+-- deliverMessageCmd : Maybe String -> String -> String -> Cmd Msg
+-- deliverMessageCmd token api_url chat_str =
+--     Http.request
+--         { method = "POST"
+--         , headers = [ (tokenHeader token) ]
+--         , url = deliverMessageCmdUrl api_url
+--         , body = (deliverMessageCmdBody token chat_str)
+--         , expect = deliverMessageCmdExpect
+--         , timeout = Nothing
+--         , withCredentials = False
+--         }
+--         |> Http.send OnDeliverMessageResponse
 
 
 authRequestUrl : String -> String

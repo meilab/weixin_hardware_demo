@@ -12,7 +12,50 @@ import Routing exposing (Route(..), parseLocation, tabsUrls, urlTabs)
 import Array exposing (Array)
 import Dict exposing (Dict)
 import Helpers exposing (cmd)
-import Commands exposing (authRequest, deliverMessageCmd)
+import Commands exposing (authRequest)
+import Phoenix.Socket
+import Phoenix.Channel
+import Phoenix.Push
+import Phoenix.Presence exposing (PresenceState, syncState, syncDiff, presenceStateDecoder, presenceDiffDecoder)
+import Json.Encode as JE
+import Json.Decode as JD exposing (field)
+import Json.Decode.Pipeline exposing (decode, required, custom)
+import Http
+import Types exposing (..)
+
+
+chatMessageDecoder : JD.Decoder ReceivedChatMessage
+chatMessageDecoder =
+    decode ReceivedChatMessage
+        |> required "id" JD.int
+        |> required "user" chatUserDecoder
+        |> required "body" JD.string
+        |> required "at" JD.int
+
+
+chatUserDecoder : JD.Decoder ChatUserInfo
+chatUserDecoder =
+    decode ChatUserInfo
+        |> required "id" JD.int
+        |> required "username" JD.string
+
+
+userPresenceDecoder : JD.Decoder UserPresence
+userPresenceDecoder =
+    decode UserPresence
+        |> required "username" JD.string
+
+
+socketServer : String -> String -> String -> String
+socketServer token hostname port_ =
+    "ws://" ++ hostname ++ ":" ++ "4000" ++ "/socket/websocket?token=" ++ (Http.encodeUri token)
+
+
+initPhxSocket : String -> String -> String -> String -> Phoenix.Socket.Socket Msg
+initPhxSocket token username hostname port_ =
+    Phoenix.Socket.init
+        (socketServer token hostname port_)
+        |> Phoenix.Socket.withDebug
 
 
 changeUrlCommand : Model -> Route -> Cmd Msg
@@ -106,15 +149,31 @@ update msg model =
                     , token = token
                     }
 
+                newPhxSocket =
+                    initPhxSocket
+                        (Maybe.withDefault "111" token)
+                        model.user.username
+                        model.url.hostname
+                        model.url.port_
+
                 newCmd =
                     case token of
                         Just tokenValue ->
-                            Navigation.newUrl (model.url.src_url ++ "/chat")
+                            Cmd.batch
+                                [ Navigation.newUrl (model.url.src_url ++ "/chat")
+                                , cmd (JoinChannel model.channelName)
+                                , cmd SendMessage
+                                ]
 
                         Nothing ->
-                            Cmd.none
+                            Navigation.newUrl (model.url.src_url ++ "/login")
             in
-                ( { model | user = newUser }, newCmd )
+                ( { model
+                    | user = newUser
+                    , phxSocket = newPhxSocket
+                  }
+                , newCmd
+                )
 
         OnAuthCmdResponse (Err error) ->
             Debug.log (toString (error))
@@ -148,23 +207,178 @@ update msg model =
             , Cmd.none
             )
 
+        -- Phoenix Socket related messages
+        PhoenixMsg msg ->
+            let
+                ( phxSocket, phxCmd ) =
+                    Phoenix.Socket.update msg model.phxSocket
+            in
+                ( { model | phxSocket = phxSocket }
+                , Cmd.map PhoenixMsg phxCmd
+                )
+
         MessageInput str ->
             ( { model | newMessage = str }, Cmd.none )
 
-        DeliverMessage ->
-            ( { model | newMessage = "" }
-            , deliverMessageCmd
-                model.user.token
-                model.url.api_url
-                model.newMessage
-            )
+        SendMessage ->
+            let
+                payload =
+                    (JE.object
+                        [ ( "at", JE.string "1" )
+                        , ( "body", JE.string model.newMessage )
+                        ]
+                    )
 
-        OnDeliverMessageResponse (Ok responseInfo) ->
-            ( { model | messages = responseInfo :: model.messages }, Cmd.none )
+                push_ =
+                    Phoenix.Push.init "new_msg" model.channelName
+                        |> Phoenix.Push.withPayload payload
 
-        OnDeliverMessageResponse (Err error) ->
-            Debug.log (toString (error))
-                ( model, Cmd.none )
+                ( phxSocket, phxCmd ) =
+                    Phoenix.Socket.push push_ model.phxSocket
+            in
+                ( { model
+                    | newMessage = ""
+                    , phxSocket = phxSocket
+                  }
+                , Cmd.map PhoenixMsg phxCmd
+                )
+
+        -- DeliverMessage ->
+        --     ( { model | newMessage = "" }
+        --     , deliverMessageCmd
+        --         model.user.token
+        --         model.url.api_url
+        --         model.newMessage
+        --     )
+        -- OnDeliverMessageResponse (Ok responseInfo) ->
+        --     ( { model | messages = responseInfo :: model.messages }, Cmd.none )
+        -- OnDeliverMessageResponse (Err error) ->
+        --     Debug.log (toString (error))
+        --         ( model, Cmd.none )
+        ReceiveChatMessage raw ->
+            case JD.decodeValue chatMessageDecoder raw of
+                Ok chatMessage ->
+                    ( { model | messages = (chatMessage :: model.messages) }, Cmd.none )
+
+                Err error ->
+                    ( model, Cmd.none )
+
+        JoinChannel channelName ->
+            let
+                channel =
+                    Phoenix.Channel.init channelName
+                        |> Phoenix.Channel.onJoin (always (ShowJoinedMessage channelName))
+                        |> Phoenix.Channel.onClose (always (ShowLeftMessage channelName))
+
+                phxSocketTemp =
+                    model.phxSocket
+                        |> Phoenix.Socket.on "new_msg" channelName ReceiveChatMessage
+                        |> Phoenix.Socket.on "presence_state" channelName HandlePresenceState
+                        |> Phoenix.Socket.on "presence_diff" channelName HandlePresenceDiff
+
+                ( phxSocket, phxCmd ) =
+                    Phoenix.Socket.join channel phxSocketTemp
+            in
+                ( { model | phxSocket = phxSocket }
+                , Cmd.map PhoenixMsg phxCmd
+                )
+
+        LeaveChannel channelName ->
+            let
+                phxSocketTemp =
+                    model.phxSocket
+                        |> Phoenix.Socket.off "new_msg" channelName
+                        |> Phoenix.Socket.off "presence_state" channelName
+                        |> Phoenix.Socket.off "presence_diff" channelName
+
+                ( phxSocket, phxCmd ) =
+                    Phoenix.Socket.leave channelName phxSocketTemp
+            in
+                ( { model
+                    | phxSocket = phxSocket
+                    , messages = []
+                  }
+                , Cmd.map PhoenixMsg phxCmd
+                )
+
+        ShowJoinedMessage channelName ->
+            let
+                joinMessage =
+                    { id = 1
+                    , user =
+                        { id = 1
+                        , username = model.user.username
+                        }
+                    , body = "Joined Channel: " ++ channelName
+                    , at = 1
+                    }
+            in
+                Debug.log (toString (joinMessage :: model.messages))
+                    ( { model | messages = joinMessage :: model.messages }
+                    , Cmd.none
+                    )
+
+        ShowLeftMessage channelName ->
+            let
+                leftMessage =
+                    { id = 1
+                    , user =
+                        { id = 1
+                        , username = model.user.username
+                        }
+                    , body = "Left Channel: " ++ channelName
+                    , at = 1
+                    }
+            in
+                ( { model | messages = leftMessage :: model.messages }
+                , Cmd.none
+                )
+
+        HandlePresenceState raw ->
+            case JD.decodeValue (presenceStateDecoder userPresenceDecoder) raw of
+                Ok presenceState ->
+                    let
+                        newPresenceState =
+                            model.phxPresences |> syncState presenceState
+
+                        onlineUsers =
+                            Dict.keys presenceState
+                                |> List.map OnlineUser
+                    in
+                        Debug.log (toString (onlineUsers))
+                            ( { model
+                                | onlineUsers = onlineUsers
+                                , phxPresences = newPresenceState
+                              }
+                            , Cmd.none
+                            )
+
+                Err error ->
+                    let
+                        _ =
+                            Debug.log "Error" error
+                    in
+                        model ! []
+
+        HandlePresenceDiff raw ->
+            case JD.decodeValue (presenceDiffDecoder userPresenceDecoder) raw of
+                Ok presenceDiff ->
+                    let
+                        newPresenceState =
+                            model.phxPresences |> syncDiff presenceDiff
+
+                        onlineUsers =
+                            Dict.keys newPresenceState
+                                |> List.map OnlineUser
+                    in
+                        { model | onlineUsers = onlineUsers, phxPresences = newPresenceState } ! []
+
+                Err error ->
+                    let
+                        _ =
+                            Debug.log "Error" error
+                    in
+                        model ! []
 
         NoOp ->
             ( model, Cmd.none )

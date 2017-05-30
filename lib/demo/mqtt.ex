@@ -18,7 +18,7 @@ defmodule Demo.Mqtt do
   end
 
   def publish_msg(clientId, message) do
-    :ok = GenMQTT.publish(self(), "sensor/phoenix/temp", "Phoenix Connected out", 0)
+    GenMQTT.publish(self(), "sensor/phoenix/temp", "Phoenix Connected out", 0)
     :ok = GenMQTT.publish(self(), "sensor/" <> clientId <>"/temp", message, 0)
   end
 

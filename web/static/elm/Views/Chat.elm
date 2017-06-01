@@ -13,6 +13,7 @@ chatView model =
     div []
         [ h3 [] [ text "Messages:" ]
         , newMessageForm model
+        , newMessageFormRest model
         , ul [] ((List.reverse << List.map renderMessage) model.messages)
         ]
 
@@ -20,6 +21,13 @@ chatView model =
 newMessageForm : Model -> Html Msg
 newMessageForm model =
     form [ onSubmit SendMessage ]
+        [ input [ type_ "text", value model.newMessage, onInput MessageInput ] []
+        ]
+
+
+newMessageFormRest : Model -> Html Msg
+newMessageFormRest model =
+    form [ onSubmit DeliverMessage ]
         [ input [ type_ "text", value model.newMessage, onInput MessageInput ] []
         ]
 

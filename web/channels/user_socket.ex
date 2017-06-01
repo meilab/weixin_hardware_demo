@@ -21,9 +21,6 @@ defmodule Demo.UserSocket do
   # See `Phoenix.Token` documentation for examples in
   # performing token verification on connect.
   def connect(%{"token" => token}, socket) do
-
-    IO.puts "hehe connect"
-    IO.puts token
     { :ok, 
       socket
         |> assign(:user_id, 1)

@@ -1,11 +1,23 @@
-module Commands exposing (authRequest)
+module Commands
+    exposing
+        ( authRequest
+        , deliverMessageCmd
+        , chatMessageDecoder
+        , userPresenceDecoder
+        )
 
 import Http exposing (..)
 import Json.Decode as JD
 import Json.Encode as JE
 import Json.Decode.Pipeline exposing (decode, required, optional)
 import Messages exposing (..)
-import Types exposing (AuthResponse)
+import Types
+    exposing
+        ( AuthResponse
+        , ReceivedChatMessage
+        , ChatUserInfo
+        , UserPresence
+        )
 import Helpers exposing (tokenHeader)
 import Maybe
 
@@ -24,19 +36,18 @@ authRequest token api_url username password =
         |> Http.send OnAuthCmdResponse
 
 
-
--- deliverMessageCmd : Maybe String -> String -> String -> Cmd Msg
--- deliverMessageCmd token api_url chat_str =
---     Http.request
---         { method = "POST"
---         , headers = [ (tokenHeader token) ]
---         , url = deliverMessageCmdUrl api_url
---         , body = (deliverMessageCmdBody token chat_str)
---         , expect = deliverMessageCmdExpect
---         , timeout = Nothing
---         , withCredentials = False
---         }
---         |> Http.send OnDeliverMessageResponse
+deliverMessageCmd : Maybe String -> String -> String -> Cmd Msg
+deliverMessageCmd token api_url chat_str =
+    Http.request
+        { method = "POST"
+        , headers = [ (tokenHeader token) ]
+        , url = deliverMessageCmdUrl api_url
+        , body = (deliverMessageCmdBody token chat_str)
+        , expect = deliverMessageCmdExpect
+        , timeout = Nothing
+        , withCredentials = False
+        }
+        |> Http.send OnDeliverMessageResponse
 
 
 authRequestUrl : String -> String
@@ -85,6 +96,28 @@ deliverMessageCmdBody token str =
         )
 
 
-deliverMessageCmdExpect : Expect String
+deliverMessageCmdExpect : Expect ReceivedChatMessage
 deliverMessageCmdExpect =
-    expectJson JD.string
+    expectJson chatMessageDecoder
+
+
+chatMessageDecoder : JD.Decoder ReceivedChatMessage
+chatMessageDecoder =
+    decode ReceivedChatMessage
+        |> required "id" JD.int
+        |> required "user" chatUserDecoder
+        |> required "body" JD.string
+        |> required "at" JD.int
+
+
+chatUserDecoder : JD.Decoder ChatUserInfo
+chatUserDecoder =
+    decode ChatUserInfo
+        |> required "id" JD.int
+        |> required "username" JD.string
+
+
+userPresenceDecoder : JD.Decoder UserPresence
+userPresenceDecoder =
+    decode UserPresence
+        |> required "username" JD.string

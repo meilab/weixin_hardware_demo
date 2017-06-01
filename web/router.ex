@@ -26,7 +26,7 @@ defmodule Demo.Router do
     pipe_through :api
 
     post ( "/auth" ), ApiController, :login
-    # post ( "/chat" ), ApiController, :chat
+    post ( "/chat" ), ApiController, :chat
   end
 
   scope "/wechat", Demo do

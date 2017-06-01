@@ -17,9 +17,9 @@ type Msg
     | Username String
     | Password String
     | ToggleSideMenu
-      -- | DeliverMessage
+    | DeliverMessage
     | MessageInput String
-      -- | OnDeliverMessageResponse (Result Http.Error String)
+    | OnDeliverMessageResponse (Result Http.Error ReceivedChatMessage)
     | SendMessage
     | PhoenixMsg (Phoenix.Socket.Msg Msg)
     | ReceiveChatMessage JE.Value

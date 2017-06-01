@@ -12,7 +12,7 @@ import Routing exposing (Route(..), parseLocation, tabsUrls, urlTabs)
 import Array exposing (Array)
 import Dict exposing (Dict)
 import Helpers exposing (cmd)
-import Commands exposing (authRequest)
+import Commands exposing (..)
 import Phoenix.Socket
 import Phoenix.Channel
 import Phoenix.Push
@@ -22,28 +22,6 @@ import Json.Decode as JD exposing (field)
 import Json.Decode.Pipeline exposing (decode, required, custom)
 import Http
 import Types exposing (..)
-
-
-chatMessageDecoder : JD.Decoder ReceivedChatMessage
-chatMessageDecoder =
-    decode ReceivedChatMessage
-        |> required "id" JD.int
-        |> required "user" chatUserDecoder
-        |> required "body" JD.string
-        |> required "at" JD.int
-
-
-chatUserDecoder : JD.Decoder ChatUserInfo
-chatUserDecoder =
-    decode ChatUserInfo
-        |> required "id" JD.int
-        |> required "username" JD.string
-
-
-userPresenceDecoder : JD.Decoder UserPresence
-userPresenceDecoder =
-    decode UserPresence
-        |> required "username" JD.string
 
 
 socketServer : String -> String -> String -> String
@@ -162,7 +140,6 @@ update msg model =
                             Cmd.batch
                                 [ Navigation.newUrl (model.url.src_url ++ "/chat")
                                 , cmd (JoinChannel model.channelName)
-                                , cmd SendMessage
                                 ]
 
                         Nothing ->
@@ -176,8 +153,7 @@ update msg model =
                 )
 
         OnAuthCmdResponse (Err error) ->
-            Debug.log (toString (error))
-                ( model, Cmd.none )
+            ( model, Cmd.none )
 
         Logout ->
             ( { model | user = initialUser }, Navigation.newUrl (model.url.src_url ++ "login") )
@@ -243,18 +219,20 @@ update msg model =
                 , Cmd.map PhoenixMsg phxCmd
                 )
 
-        -- DeliverMessage ->
-        --     ( { model | newMessage = "" }
-        --     , deliverMessageCmd
-        --         model.user.token
-        --         model.url.api_url
-        --         model.newMessage
-        --     )
-        -- OnDeliverMessageResponse (Ok responseInfo) ->
-        --     ( { model | messages = responseInfo :: model.messages }, Cmd.none )
-        -- OnDeliverMessageResponse (Err error) ->
-        --     Debug.log (toString (error))
-        --         ( model, Cmd.none )
+        DeliverMessage ->
+            ( { model | newMessage = "" }
+            , deliverMessageCmd
+                model.user.token
+                model.url.api_url
+                model.newMessage
+            )
+
+        OnDeliverMessageResponse (Ok responseInfo) ->
+            ( { model | messages = responseInfo :: model.messages }, Cmd.none )
+
+        OnDeliverMessageResponse (Err error) ->
+            ( model, Cmd.none )
+
         ReceiveChatMessage raw ->
             case JD.decodeValue chatMessageDecoder raw of
                 Ok chatMessage ->
@@ -313,10 +291,9 @@ update msg model =
                     , at = 1
                     }
             in
-                Debug.log (toString (joinMessage :: model.messages))
-                    ( { model | messages = joinMessage :: model.messages }
-                    , Cmd.none
-                    )
+                ( { model | messages = joinMessage :: model.messages }
+                , Cmd.none
+                )
 
         ShowLeftMessage channelName ->
             let
@@ -345,13 +322,12 @@ update msg model =
                             Dict.keys presenceState
                                 |> List.map OnlineUser
                     in
-                        Debug.log (toString (onlineUsers))
-                            ( { model
-                                | onlineUsers = onlineUsers
-                                , phxPresences = newPresenceState
-                              }
-                            , Cmd.none
-                            )
+                        ( { model
+                            | onlineUsers = onlineUsers
+                            , phxPresences = newPresenceState
+                          }
+                        , Cmd.none
+                        )
 
                 Err error ->
                     let

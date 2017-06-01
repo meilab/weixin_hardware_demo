@@ -7,6 +7,7 @@ import Update exposing (..)
 import Navigation exposing (Location)
 import Routing exposing (parseLocation, urlTabs)
 import Dict exposing (Dict)
+import Phoenix.Socket
 
 
 main : Program Never Model Msg
@@ -60,4 +61,4 @@ init location =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Phoenix.Socket.listen model.phxSocket PhoenixMsg

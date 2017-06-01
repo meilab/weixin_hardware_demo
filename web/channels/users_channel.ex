@@ -4,10 +4,8 @@ defmodule Demo.UsersChannel do
   alias Demo.Presence
 
   def join("room:" <> room_id, params, socket) do
-    IO.puts "room Params"
-    IO.inspect params
     send(self(), :after_join)
-    {:ok, %{}, socket}
+    {:ok, socket}
   end
 
   def handle_info(:after_join, socket) do
@@ -16,6 +14,10 @@ defmodule Demo.UsersChannel do
     })
     push socket, "presence_state", Presence.list(socket)
 
+    {:noreply, socket}
+  end
+
+  def handle_info(_, socket) do
     {:noreply, socket}
   end
 
@@ -28,14 +30,15 @@ defmodule Demo.UsersChannel do
   end
 
   def handle_in("new_msg", params, socket) do
-    IO.puts "new messge"
-    IO.inspect params 
     broadcast! socket, "new_msg", %{
       id: 1,
       user: Demo.UserView.render("user.json", %{user: %{id: 1, username: "hehe"}}),
-      body: params.body,
-      at: params.at
+      body: params["body"],
+      at: params["at"]
     }
+
+    resp = Demo.MqttClient.publish_msg("phoenix_client", params["body"])
+    IO.inspect resp
 
     {:reply, :ok, socket}
   end

@@ -6,8 +6,7 @@ defmodule Demo.ApiController do
   end
 
   def chat(conn, %{"token" => token, "message" => message}) do
-    resp = Demo.Mqtt.publish_msg("phoenix_client", message)
-    IO.inspect resp
+    :ok = Demo.MqttClient.publish_msg("phoenix_client", message)
     render(conn, "chat.json", %{message: message})
   end
 end
